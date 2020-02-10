@@ -150,12 +150,24 @@ class GameScene extends Phaser.Scene {
             key: 'explosion',
             frames: this.anims.generateFrameNumbers('explode', { start: 0, end: 36 }),
             frameRate: 20,
-            repeat: -1
+            repeat: 0,
         });
     }
 
+    addExplosion = (x, y) => {
+        let playerAnim = this.add.sprite(x, y, 'explosion', 1);
+        playerAnim.play('explosion');
+        var explodeTimer = this.time.addEvent({
+            delay: 800,
+            callback: () => {
+                playerAnim.destroy();
+                explodeTimer.remove();
+            }
+        });
+    };
+
     collectCoin(player, coin) {
-        coin.disableBody(true, true);
+        coin.destroy();
         this.points++;
         this.scoreText.setText("POINTS: " + this.points);
     }
@@ -164,7 +176,7 @@ class GameScene extends Phaser.Scene {
         const hitBoss = enemy.texture.key === 'boss_fly';
         if (hitBoss && this.bossHealth > 0) {
             this.bossHealth--;
-            bullet.disableBody(true, true);
+            bullet.destroy();
             console.log('>>>>', enemy.texture.key, this.bossHealth);
         } else {
 
@@ -174,9 +186,12 @@ class GameScene extends Phaser.Scene {
                 this.centerText.setAlpha(1);
             }
 
-            bullet.disableBody(true, true);
+            bullet.destroy();
 
-            enemy.disableBody(true, true);
+            const eX = enemy.body.x;
+            const eY = enemy.body.y;
+            enemy.destroy();
+            this.addExplosion(eX, eY);
             //enemy.anims.play('explosion', true);
 
             this.points += 3;
@@ -185,8 +200,8 @@ class GameScene extends Phaser.Scene {
             if (hitBoss || Math.floor(Math.random() * 2) === 1) {
                 for (let i = 0; i < (hitBoss ? 50 : 1); i++) {
                     const coin = this.physics.add.image(
-                        enemy.body.x + (Math.floor(Math.random() * 300)),
-                        enemy.body.y + (Math.floor(Math.random() * 300)),
+                        eX + (Math.floor(Math.random() * 300)),
+                        eY + (Math.floor(Math.random() * 300)),
                         "coin");
                     this.coins.add(coin);
                 }
