@@ -4,7 +4,6 @@ import bg from "../assets/bg.png";
 import bike from "../assets/bike.png";
 import coin from "../assets/coin.png";
 import bullet from "../assets/bullet.png";
-import uiTop from "../assets/ui_top.png";
 import asteroid from "../assets/asteroid.png";
 import boss_fly from "../assets/boss.png";
 import {wave1} from "../WaveMaker";
@@ -27,6 +26,7 @@ class GameScene extends Phaser.Scene {
     bossHealth = 25;
     levelComplete = false;
 
+    waveTimer;
     waveSectionIndex = 0;
     enemyBulletTimer;
 
@@ -35,8 +35,15 @@ class GameScene extends Phaser.Scene {
     jumpBoosts = 1;
     hasShot = false;
 
+    coinSounds = [];
+    gunSounds = [];
+
     constructor() {
         super({key: 'GameScene'});
+        this.points = 0;
+        this.bossHealth = 25;
+        this.levelComplete = false;
+        this.waveSectionIndex = 0;
     }
 
     makeImage = (scene, x, y, key) => scene.add.image(x, y, key).setOrigin(0, 0);
@@ -52,20 +59,19 @@ class GameScene extends Phaser.Scene {
 
         const bg = this.makeImage(this, 0, 0, "bg");
         const bg2 = this.makeImage(this, 1280, 0, "bg");
-        const uiTop = this.makeImage(this, 0, 0, "uiTop");
         this.scoreText = this.add.text(40, 40, 'POINTS: 0', {fontFamily: '"Impact"', fontSize: 42});
         this.centerText = this.add.text(1280 / 2, 720 / 2, 'LEVEL COMPLETE', {
             fontFamily: '"Impact"',
             fontSize: 42
-        }).setOrigin(0.5, 0);
+        }).setOrigin(0.5, 0.5);
         this.centerText.setAlpha(0);
         this.centerText.setDepth(100);
 
         //Physics groups
-        this.bullets = this.createGroup(this,{velocityX: 700, allowGravity: false});
-        this.coins = this.createGroup(this,{velocityX: -250, bounceY: 0.3});
-        this.enemies = this.createGroup(this,{velocityX: -550, bounceY: 0.6});
-        this.enemyBullets = this.createGroup(this,{velocityX: -450, bounceY: 0.85});
+        this.bullets = this.createGroup(this, {velocityX: 700, allowGravity: false});
+        this.coins = this.createGroup(this, {velocityX: -250, bounceY: 0.3});
+        this.enemies = this.createGroup(this, {velocityX: -550, bounceY: 0.6});
+        this.enemyBullets = this.createGroup(this, {velocityX: -450, bounceY: 0.85});
 
         this.player = this.physics.add.image(200, 400, "bike").setOrigin(0, 0);
         this.player.setBounce(0.3);
@@ -75,11 +81,18 @@ class GameScene extends Phaser.Scene {
         this.platforms.create(0, 630, 'floor').setOrigin(0, 0).setAlpha(0).refreshBody();
         this.platforms.create(1280, 630, 'floor').setOrigin(0, 0).setAlpha(0).refreshBody();
 
-        var timer = this.time.addEvent({
-            delay: 4000,
+        this.gunSound = this.sound.add('gun_sound');
+        this.hitSound = this.sound.add('hit_sound');
+        this.jumpSound = this.sound.add('jump_sound');
+        this.deathSound = this.sound.add('death_sound');
+        this.theme = this.sound.add('theme_music');
+        this.theme.play();
+
+        this.waveTimer = this.time.addEvent({
+            delay: 3000,
             callback: () => {
                 if (this.waveSectionIndex >= wave1.length) {
-                    timer.remove();
+                    this.waveTimer.remove();
                 } else {
                     const waveSection = wave1[this.waveSectionIndex];
                     const {stepX, stepY, yPos} = waveSection;
@@ -102,8 +115,8 @@ class GameScene extends Phaser.Scene {
                             delay: 3000,
                             callback: () => {
                                 const bullet = this.physics.add.image(
-                                    xPos+(-200+ (Math.floor(Math.random() * 100))),
-                                    yPos+(-400+ (Math.floor(Math.random() * 200))),
+                                    xPos + (-200 + (Math.floor(Math.random() * 100))),
+                                    yPos + (-400 + (Math.floor(Math.random() * 200))),
                                     "asteroid");
                                 this.enemyBullets.add(bullet);
                             },
@@ -122,7 +135,9 @@ class GameScene extends Phaser.Scene {
                         bounceY: bounce,
                     });
                     this.physics.add.collider(this.enemies, this.platforms);
-                    this.physics.add.overlap(this.player, this.enemies, () => this.scene.start('TitleScene'), null, this);
+                    this.physics.add.overlap(this.player, this.enemies, () => {
+                        this.killPlayer();
+                    }, null, this);
                     this.physics.add.overlap(this.bullets, this.enemies, this.killEnemy, null, this);
                     this.waveSectionIndex++;
                 }
@@ -145,15 +160,22 @@ class GameScene extends Phaser.Scene {
             loop: -1
         };
         this.tweens.add(bgTweenConfig);
-        this.tweens.add({...bgTweenConfig, targets: bg2, x: 0,});
+        this.tweens.add({...bgTweenConfig, targets: bg2, x: 0});
 
         this.anims.create({
             key: 'explosion',
-            frames: this.anims.generateFrameNumbers('explode', { start: 0, end: 36 }),
+            frames: this.anims.generateFrameNumbers('explode', {start: 0, end: 36}),
             frameRate: 20,
             repeat: 0,
         });
     }
+
+    killPlayer = () => {
+        this.theme.stop();
+        this.deathSound.play();
+        this.waveTimer.remove();
+        this.scene.start('TitleScene');
+    };
 
     addExplosion = (x, y) => {
         let playerAnim = this.add.sprite(x, y, 'explosion', 1);
@@ -171,10 +193,14 @@ class GameScene extends Phaser.Scene {
         coin.destroy();
         this.points++;
         this.scoreText.setText("POINTS: " + this.points);
+        const coinSound = this.sound.add('coin_sound');
+        coinSound.play();
+        this.coinSounds.push(coinSound);
     }
 
     killEnemy(bullet, enemy) {
         const hitBoss = enemy.texture.key === 'boss_fly';
+        this.hitSound.play();
         if (hitBoss && this.bossHealth > 0) {
             this.bossHealth--;
             bullet.destroy();
@@ -193,8 +219,6 @@ class GameScene extends Phaser.Scene {
             const eY = enemy.body.y;
             enemy.destroy();
             this.addExplosion(eX, eY);
-            //enemy.anims.play('explosion', true);
-
             this.points += 3;
             this.scoreText.setText("POINTS: " + this.points);
 
@@ -215,6 +239,7 @@ class GameScene extends Phaser.Scene {
         if (this.cursors.up.isDown && playerBody.touching.down && !this.jumpStarted) {
             this.player.setVelocityY(-300);
             this.jumpStarted = true;
+            this.jumpSound.play();
 
         } else if (this.cursors.up.isDown && this.jumpStarted) {
 
@@ -239,6 +264,10 @@ class GameScene extends Phaser.Scene {
             const bullet = this.physics.add.image(playerBody.x + 150, playerBody.y + 45, 'bullet');
             this.bullets.add(bullet);
             this.hasShot = true;
+
+            const gunSound = this.sound.add('gun_sound');
+            gunSound.play();
+            this.gunSounds.push(gunSound);
         } else if (this.cursors.space.isUp) {
             this.hasShot = false;
         }
