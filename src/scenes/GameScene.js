@@ -40,10 +40,6 @@ class GameScene extends Phaser.Scene {
 
     constructor() {
         super({key: 'GameScene'});
-        this.points = 0;
-        this.bossHealth = 25;
-        this.levelComplete = false;
-        this.waveSectionIndex = 0;
     }
 
     makeImage = (scene, x, y, key) => scene.add.image(x, y, key).setOrigin(0, 0);
@@ -55,6 +51,11 @@ class GameScene extends Phaser.Scene {
     createGroup = (scene, children) => scene.physics.add.group(children);
 
     create() {
+        this.points = 0;
+        this.bossHealth = 25;
+        this.levelComplete = false;
+        this.waveSectionIndex = 0;
+
         this.cursors = this.input.keyboard.createCursorKeys();
 
         const bg = this.makeImage(this, 0, 0, "bg");
