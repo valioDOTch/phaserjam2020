@@ -122,6 +122,7 @@ class GameScene extends Phaser.Scene {
                         bounceY: bounce,
                     });
                     this.physics.add.collider(this.enemies, this.platforms);
+                    this.physics.add.overlap(this.player, this.enemies, () => this.scene.start('TitleScene'), null, this);
                     this.physics.add.overlap(this.bullets, this.enemies, this.killEnemy, null, this);
                     this.waveSectionIndex++;
                 }
