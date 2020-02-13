@@ -67,7 +67,7 @@ class GameScene extends Phaser.Scene {
         this.enemies = this.createGroup(this,{velocityX: -550, bounceY: 0.6});
         this.enemyBullets = this.createGroup(this,{velocityX: -450, bounceY: 0.85});
 
-        this.player = this.physics.add.image(200, 400, "bike").setOrigin(0, 0);
+        this.player = this.physics.add.image(200, 400, "bike").setOrigin(0, 1);
         this.player.setBounce(0.3);
         this.player.setCollideWorldBounds(true);
 
@@ -155,7 +155,7 @@ class GameScene extends Phaser.Scene {
     }
 
     collectCoin(player, coin) {
-        coin.disableBody(true, true);
+        coin.destroy();
         this.points++;
         this.scoreText.setText("POINTS: " + this.points);
     }
@@ -164,7 +164,7 @@ class GameScene extends Phaser.Scene {
         const hitBoss = enemy.texture.key === 'boss_fly';
         if (hitBoss && this.bossHealth > 0) {
             this.bossHealth--;
-            bullet.disableBody(true, true);
+            bullet.destroy();
             console.log('>>>>', enemy.texture.key, this.bossHealth);
         } else {
 
@@ -174,9 +174,11 @@ class GameScene extends Phaser.Scene {
                 this.centerText.setAlpha(1);
             }
 
-            bullet.disableBody(true, true);
+            bullet.destroy();
 
-            enemy.disableBody(true, true);
+            const enemyX = enemy.body.x;
+            const enemyY = enemy.body.y;
+            enemy.destroy();
             //enemy.anims.play('explosion', true);
 
             this.points += 3;
@@ -185,8 +187,8 @@ class GameScene extends Phaser.Scene {
             if (hitBoss || Math.floor(Math.random() * 2) === 1) {
                 for (let i = 0; i < (hitBoss ? 50 : 1); i++) {
                     const coin = this.physics.add.image(
-                        enemy.body.x + (Math.floor(Math.random() * 300)),
-                        enemy.body.y + (Math.floor(Math.random() * 300)),
+                        enemyX + (Math.floor(Math.random() * 300)),
+                        enemyY + (Math.floor(Math.random() * 300)),
                         "coin");
                     this.coins.add(coin);
                 }
@@ -199,6 +201,7 @@ class GameScene extends Phaser.Scene {
         if (this.cursors.up.isDown && playerBody.touching.down && !this.jumpStarted) {
             this.player.setVelocityY(-300);
             this.jumpStarted = true;
+            this.player.setTexture('bike_jump');
 
         } else if (this.cursors.up.isDown && this.jumpStarted) {
 
@@ -209,6 +212,10 @@ class GameScene extends Phaser.Scene {
         } else if (this.cursors.up.isUp) {
             this.jumpStarted = false;
             this.jumpBoosts = 1;
+        }
+
+        if(playerBody.velocity.y > -10) {
+            this.player.setTexture('bike');
         }
 
         if (this.cursors.left.isDown) {

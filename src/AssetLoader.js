@@ -1,5 +1,6 @@
 import bg from "./assets/bg.png";
 import bike from "./assets/bike.png";
+import bike_jump from "./assets/bike_jump.png";
 import floor from "./assets/floor.png";
 import coin from "./assets/coin.png";
 import bullet from "./assets/bullet.png";
@@ -14,6 +15,7 @@ import explode from "./assets/explode.png";
 export const loadAssets = (scene) => {
     scene.load.image("bg", bg);
     scene.load.image("bike", bike);
+    scene.load.image("bike_jump", bike_jump);
     scene.load.image("floor", floor);
     scene.load.image("coin", coin);
     scene.load.image("bullet", bullet);
