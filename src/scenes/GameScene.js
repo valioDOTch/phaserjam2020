@@ -4,7 +4,6 @@ import bg from "../assets/bg.png";
 import bike from "../assets/bike.png";
 import coin from "../assets/coin.png";
 import bullet from "../assets/bullet.png";
-import uiTop from "../assets/ui_top.png";
 import asteroid from "../assets/asteroid.png";
 import boss_fly from "../assets/boss.png";
 import {wave1} from "../WaveMaker";
@@ -35,6 +34,9 @@ class GameScene extends Phaser.Scene {
     jumpBoosts = 1;
     hasShot = false;
 
+    coinSounds = [];
+    gunSounds = [];
+
     constructor() {
         super({key: 'GameScene'});
     }
@@ -62,12 +64,12 @@ class GameScene extends Phaser.Scene {
         this.centerText.setDepth(100);
 
         //Physics groups
-        this.bullets = this.createGroup(this,{velocityX: 700, allowGravity: false});
-        this.coins = this.createGroup(this,{velocityX: -250, bounceY: 0.3});
-        this.enemies = this.createGroup(this,{velocityX: -550, bounceY: 0.6});
-        this.enemyBullets = this.createGroup(this,{velocityX: -450, bounceY: 0.85});
+        this.bullets = this.createGroup(this, {velocityX: 700, allowGravity: false});
+        this.coins = this.createGroup(this, {velocityX: -250, bounceY: 0.3});
+        this.enemies = this.createGroup(this, {velocityX: -550, bounceY: 0.6});
+        this.enemyBullets = this.createGroup(this, {velocityX: -450, bounceY: 0.85});
 
-        this.player = this.physics.add.image(200, 400, "bike").setOrigin(0, 1);
+        this.player = this.physics.add.image(200, 400, "bike").setOrigin(0, 0);
         this.player.setBounce(0.3);
         this.player.setCollideWorldBounds(true);
 
@@ -79,7 +81,7 @@ class GameScene extends Phaser.Scene {
             delay: 4000,
             callback: () => {
                 if (this.waveSectionIndex >= wave1.length) {
-                    timer.remove();
+                    this.waveTimer.remove();
                 } else {
                     const waveSection = wave1[this.waveSectionIndex];
                     const {stepX, stepY, yPos} = waveSection;
@@ -102,8 +104,8 @@ class GameScene extends Phaser.Scene {
                             delay: 3000,
                             callback: () => {
                                 const bullet = this.physics.add.image(
-                                    xPos+(-200+ (Math.floor(Math.random() * 100))),
-                                    yPos+(-400+ (Math.floor(Math.random() * 200))),
+                                    xPos + (-200 + (Math.floor(Math.random() * 100))),
+                                    yPos + (-400 + (Math.floor(Math.random() * 200))),
                                     "asteroid");
                                 this.enemyBullets.add(bullet);
                             },
@@ -144,24 +146,47 @@ class GameScene extends Phaser.Scene {
             loop: -1
         };
         this.tweens.add(bgTweenConfig);
-        this.tweens.add({...bgTweenConfig, targets: bg2, x: 0,});
+        this.tweens.add({...bgTweenConfig, targets: bg2, x: 0});
 
         this.anims.create({
             key: 'explosion',
-            frames: this.anims.generateFrameNumbers('explode', { start: 0, end: 36 }),
+            frames: this.anims.generateFrameNumbers('explode', {start: 0, end: 36}),
             frameRate: 20,
-            repeat: -1
+            repeat: 0,
         });
     }
+
+    killPlayer = () => {
+        this.theme.stop();
+        this.deathSound.play();
+        this.waveTimer.remove();
+        this.scene.start('TitleScene');
+    };
+
+    addExplosion = (x, y) => {
+        let playerAnim = this.add.sprite(x, y, 'explosion', 1);
+        playerAnim.play('explosion');
+        var explodeTimer = this.time.addEvent({
+            delay: 800,
+            callback: () => {
+                playerAnim.destroy();
+                explodeTimer.remove();
+            }
+        });
+    };
 
     collectCoin(player, coin) {
         coin.destroy();
         this.points++;
         this.scoreText.setText("POINTS: " + this.points);
+        const coinSound = this.sound.add('coin_sound');
+        coinSound.play();
+        this.coinSounds.push(coinSound);
     }
 
     killEnemy(bullet, enemy) {
         const hitBoss = enemy.texture.key === 'boss_fly';
+        this.hitSound.play();
         if (hitBoss && this.bossHealth > 0) {
             this.bossHealth--;
             bullet.destroy();
@@ -174,21 +199,20 @@ class GameScene extends Phaser.Scene {
                 this.centerText.setAlpha(1);
             }
 
-            bullet.destroy();
+            bullet.disableBody(true, true);
 
-            const enemyX = enemy.body.x;
-            const enemyY = enemy.body.y;
+            const eX = enemy.body.x;
+            const eY = enemy.body.y;
             enemy.destroy();
-            //enemy.anims.play('explosion', true);
-
+            this.addExplosion(eX, eY);
             this.points += 3;
             this.scoreText.setText("POINTS: " + this.points);
 
             if (hitBoss || Math.floor(Math.random() * 2) === 1) {
                 for (let i = 0; i < (hitBoss ? 50 : 1); i++) {
                     const coin = this.physics.add.image(
-                        enemyX + (Math.floor(Math.random() * 300)),
-                        enemyY + (Math.floor(Math.random() * 300)),
+                        enemy.body.x + (Math.floor(Math.random() * 300)),
+                        enemy.body.y + (Math.floor(Math.random() * 300)),
                         "coin");
                     this.coins.add(coin);
                 }
@@ -201,7 +225,7 @@ class GameScene extends Phaser.Scene {
         if (this.cursors.up.isDown && playerBody.touching.down && !this.jumpStarted) {
             this.player.setVelocityY(-300);
             this.jumpStarted = true;
-            this.player.setTexture('bike_jump');
+            this.jumpSound.play();
 
         } else if (this.cursors.up.isDown && this.jumpStarted) {
 

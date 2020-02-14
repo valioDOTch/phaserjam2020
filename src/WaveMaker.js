@@ -1,10 +1,10 @@
 export const wave1 = [
     {
-        key: 'enemy_2',
-        amount: 2,
-        yPos: -100,
-        stepX: 400,
-        stepY: -400,
+        key: 'enemy_1',
+        amount: 5,
+        yPos: 500,
+        stepX: 300,
+        stepY: 20,
     },
     {
         key: 'zombie',
@@ -40,6 +40,13 @@ export const wave1 = [
         yPos: 150,
         stepX: 120,
         stepY: 80,
+    },
+    {
+        key: 'enemy_2',
+        amount: 4,
+        yPos: -100,
+        stepX: 400,
+        stepY: -400,
     },
     {
         key: 'zombie',
